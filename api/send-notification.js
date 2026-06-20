@@ -1,4 +1,5 @@
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getMessaging } = require("firebase-admin/messaging");
 
 let app = null;
 
@@ -14,8 +15,8 @@ function initFirebase() {
     serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
   }
 
-  app = admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  app = initializeApp({
+    credential: cert(serviceAccount),
   });
 
   console.log("Firebase initialized successfully");
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
       },
     };
 
-    const response = await admin.messaging().send(message);
+    const response = await getMessaging().send(message);
     return res.status(200).json({ success: true, messageId: response });
 
   } catch (error) {
