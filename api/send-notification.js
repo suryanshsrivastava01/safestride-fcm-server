@@ -1,5 +1,7 @@
 const admin = require("firebase-admin");
 
+console.log("ENV CHECK:", !!process.env.FIREBASE_SERVICE_ACCOUNT);
+
 // Read Firebase Service Account from Vercel Environment Variable
 const serviceAccount = JSON.parse(
   process.env.FIREBASE_SERVICE_ACCOUNT
