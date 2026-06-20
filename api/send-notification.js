@@ -1,7 +1,11 @@
 const admin = require("firebase-admin");
 
-const serviceAccount = require("../serviceAccountKey.json");
+// Read Firebase Service Account from Vercel Environment Variable
+const serviceAccount = JSON.parse(
+  process.env.FIREBASE_SERVICE_ACCOUNT
+);
 
+// Initialize Firebase Admin only once
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -9,6 +13,7 @@ if (!admin.apps.length) {
 }
 
 module.exports = async (req, res) => {
+  // Allow only POST requests
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
@@ -19,11 +24,18 @@ module.exports = async (req, res) => {
   try {
     const { topic, title, body } = req.body;
 
+    if (!topic || !title || !body) {
+      return res.status(400).json({
+        success: false,
+        message: "topic, title and body are required",
+      });
+    }
+
     const message = {
-      topic,
+      topic: topic,
       notification: {
-        title,
-        body,
+        title: title,
+        body: body,
       },
     };
 
@@ -34,7 +46,7 @@ module.exports = async (req, res) => {
       messageId: response,
     });
   } catch (error) {
-    console.error(error);
+    console.error("FCM ERROR:", error);
 
     return res.status(500).json({
       success: false,
