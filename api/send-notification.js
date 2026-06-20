@@ -1,58 +1,60 @@
 const admin = require("firebase-admin");
 
-console.log("ENV CHECK:", !!process.env.FIREBASE_SERVICE_ACCOUNT);
+let initialized = false;
 
-// Read Firebase Service Account from Vercel Environment Variable
-const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT
-);
+function initFirebase() {
+  if (initialized || admin.apps.length > 0) return;
+  try {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT env variable missing");
 
-// Initialize Firebase Admin only once
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+    const serviceAccount = JSON.parse(raw);
+
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+
+    initialized = true;
+    console.log("Firebase initialized successfully");
+  } catch (err) {
+    console.error("Firebase init failed:", err.message);
+    throw err;
+  }
 }
 
 module.exports = async (req, res) => {
-  // Allow only POST requests
   if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      message: "Method Not Allowed",
-    });
+    return res.status(405).json({ success: false, message: "Method Not Allowed" });
   }
 
   try {
+    initFirebase();
+
     const { topic, title, body } = req.body;
 
     if (!topic || !title || !body) {
-      return res.status(400).json({
-        success: false,
-        message: "topic, title and body are required",
-      });
+      return res.status(400).json({ success: false, message: "topic, title and body are required" });
     }
 
     const message = {
       topic: topic,
-      notification: {
-        title: title,
-        body: body,
+      notification: { title: title, body: body },
+      data: {
+        type: "emergency",
+        stickId: topic.replace("emergency_", ""),
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
       },
     };
 
     const response = await admin.messaging().send(message);
+    return res.status(200).json({ success: true, messageId: response });
 
-    return res.status(200).json({
-      success: true,
-      messageId: response,
-    });
   } catch (error) {
-    console.error("FCM ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    console.error("ERROR:", error.message);
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
