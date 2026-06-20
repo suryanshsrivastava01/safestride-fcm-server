@@ -1,29 +1,24 @@
 const admin = require("firebase-admin");
 
-let initialized = false;
+let app = null;
 
 function initFirebase() {
-  if (initialized || admin.apps.length > 0) return;
-  try {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT env variable missing");
+  if (app) return;
 
-    const serviceAccount = JSON.parse(raw);
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT env variable missing");
 
-    if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
-    }
+  const serviceAccount = JSON.parse(raw);
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-
-    initialized = true;
-    console.log("Firebase initialized successfully");
-  } catch (err) {
-    console.error("Firebase init failed:", err.message);
-    throw err;
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
   }
+
+  app = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+
+  console.log("Firebase initialized successfully");
 }
 
 module.exports = async (req, res) => {
